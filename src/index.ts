@@ -8,6 +8,7 @@ import { time, timeStamp } from 'node:console';
 import interviewRoutes from './routes/interview.routes';
 import jobRoutes from './routes/job.routes';
 import authRoutes from './routes/auth.routes';
+import uploadRoutes from './routes/upload.routes';
 
 
 
@@ -50,6 +51,8 @@ app.use("/api/resume", resumeRoutes);
 app.use('/api/interview', interviewRoutes); 
 app.use('/api/job', jobRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes); 
+
 
 
 app.listen(port, () => {

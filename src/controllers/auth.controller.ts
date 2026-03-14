@@ -1,16 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-
-// Temporary in-memory user storage (we'll replace with database later)
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  createdAt: Date;
-}
-
-const users: User[] = [];
+import { prisma } from '../config/prisma';
 
 export class AuthController {
   async signup(req: Request, res: Response): Promise<void> {
@@ -35,7 +25,10 @@ export class AuthController {
       }
 
       // Check if user already exists
-      const existingUser = users.find(u => u.email === email);
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
       if (existingUser) {
         res.status(409).json({
           success: false,
@@ -47,18 +40,16 @@ export class AuthController {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
-      const newUser: User = {
-        id: `user_${Date.now()}`,
-        name,
-        email,
-        password: hashedPassword,
-        createdAt: new Date(),
-      };
+      // Create user in database
+      const newUser = await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+        },
+      });
 
-      users.push(newUser);
-
-      console.log('✅ New user created:', email);
+      console.log('✅ New user created in database:', email);
 
       res.status(201).json({
         success: true,
@@ -82,8 +73,11 @@ export class AuthController {
     try {
       const { email, password } = req.body;
 
-      // Find user
-      const user = users.find(u => u.email === email);
+      // Find user in database
+      const user = await prisma.user.findUnique({
+        where: { email },
+      });
+
       if (!user) {
         res.status(401).json({
           success: false,
@@ -94,6 +88,7 @@ export class AuthController {
 
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.password);
+      
       if (!isValidPassword) {
         res.status(401).json({
           success: false,
@@ -102,7 +97,7 @@ export class AuthController {
         return;
       }
 
-      console.log('✅ User signed in:', email);
+      console.log('✅ User signed in from database:', email);
 
       res.status(200).json({
         success: true,

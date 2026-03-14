@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  resumeAnalyses   ResumeAnalysis[]
+  interviewSessions InterviewSession[]
+  jobMatches       JobMatch[]
+
+  @@map("users")
+}
+
+// Resume Analysis model
+model ResumeAnalysis {
+  id              String   @id @default(uuid())
+  userId          String
+  resumeText      String   @db.Text
+  targetRole      String?
+  overallScore    Int
+  strengths       String[]
+  improvements    String[]
+  atsOptimization String[]
+  tailoredAdvice  String   @db.Text
+  createdAt       DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("resume_analyses")
+}
+
+// Interview Session model
+model InterviewSession {
+  id                String   @id @default(uuid())
+  userId            String
+  role              String
+  difficulty        String
+  questionsAnswered Int      @default(0)
+  averageScore      Float?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions InterviewQuestion[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("interview_sessions")
+}
+
+// Interview Question model
+model InterviewQuestion {
+  id        String   @id @default(uuid())
+  sessionId String
+  question  String   @db.Text
+  answer    String?  @db.Text
+  score     Int?
+  feedback  String?  @db.Text
+  createdAt DateTime @default(now())
+
+  // Relations
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("interview_questions")
+}
+
+// Job Match model
+model JobMatch {
+  id                 String   @id @default(uuid())
+  userId             String
+  jobTitle           String
+  jobDescription     String   @db.Text
+  resumeText         String   @db.Text
+  matchPercentage    Int
+  matchedSkills      String[]
+  missingSkills      String[]
+  matchedExperience  String[]
+  missingExperience  String[]
+  recommendations    String[]
+  overallAssessment  String   @db.Text
+  createdAt          DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("job_matches")
+}

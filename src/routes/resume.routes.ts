@@ -10,11 +10,13 @@
 
 import { Router } from 'express';
 import { ResumeController } from '../controllers/resume.controller';
+import { aiLimiter } from '../middlewares/rateLimiter';
 
 const router = Router();
 const resumeController = new ResumeController();
 
-router.post('/analyze', (req, res) => resumeController.analyzeResume(req, res));
+
+router.post('/analyze',aiLimiter, (req, res) => resumeController.analyzeResume(req, res));
 router.get('/history/:userId', (req, res) => resumeController.getHistory(req, res));
 router.get('/analysis/:id', (req, res) => resumeController.getAnalysisById(req, res));
 router.delete('/analysis/:id', (req, res) => resumeController.deleteAnalysis(req, res));

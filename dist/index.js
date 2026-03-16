@@ -18,6 +18,7 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3000;
 app.use((0, helmet_1.default)());
+app.set('trust proxy', 1);
 app.use((0, cors_1.default)({
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: true,

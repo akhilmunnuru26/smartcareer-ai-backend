@@ -1,0 +1,18 @@
+"use strict";
+// import { Router } from "express";
+// import { ResumeController} from "../controllers/resume.controller";
+Object.defineProperty(exports, "__esModule", { value: true });
+// const router = Router();
+// const resumeController = new ResumeController();
+// router.post("/analyze", (req,res) => resumeController.analyzeResume(req,res));
+// export default router;
+const express_1 = require("express");
+const resume_controller_1 = require("../controllers/resume.controller");
+const rateLimiter_1 = require("../middlewares/rateLimiter");
+const router = (0, express_1.Router)();
+const resumeController = new resume_controller_1.ResumeController();
+router.post('/analyze', rateLimiter_1.aiLimiter, (req, res) => resumeController.analyzeResume(req, res));
+router.get('/history/:userId', (req, res) => resumeController.getHistory(req, res));
+router.get('/analysis/:id', (req, res) => resumeController.getAnalysisById(req, res));
+router.delete('/analysis/:id', (req, res) => resumeController.deleteAnalysis(req, res));
+exports.default = router;

@@ -1,237 +1,182 @@
-// import { anthropic, anthropicModel } from '../config/gemini';
-
-// interface ResumeAnalysisResult {
-//   overallScore: number;
-//   strengths: string[];
-//   improvements: string[];
-//   atsOptimization: string[];
-//   tailoredAdvice: string;
-// }
-
-// export class ClaudeService {
-//   async analyzeResume(resumeText: string, targetRole?: string): Promise<ResumeAnalysisResult> {
-//     const prompt = `You are an expert technical recruiter and career coach. Analyze this resume ${targetRole ? `for a ${targetRole} role` : ''}.
-
-// RESUME:
-// ${resumeText}
-
-// Provide a structured analysis in JSON format with:
-// 1. overallScore (0-100): How strong is this resume?
-// 2. strengths (array): Top 3-5 strong points
-// 3. improvements (array): Top 3-5 areas to improve
-// 4. atsOptimization (array): 3-5 specific ATS (Applicant Tracking System) tips
-// 5. tailoredAdvice (string): 2-3 paragraph personalized career advice
-
-// Return ONLY valid JSON, no markdown formatting.`;
-
-//     try {
-//       console.log('🤖 Calling Claude API...');
-      
-//       const message = await anthropic.messages.create({
-//         model: anthropicModel,
-//         max_tokens: 2000,
-//         messages: [
-//           {
-//             role: 'user',
-//             content: prompt,
-//           },
-//         ],
-//       });
-
-//       console.log('✅ Claude API Response received');
-//       console.log('Response:', JSON.stringify(message, null, 2));
-
-//       const responseText = message.content[0].type === 'text' 
-//         ? message.content[0].text 
-//         : '';
-
-//       console.log('📝 Response Text:', responseText);
-
-//       // Parse Claude's JSON response
-//       const analysis: ResumeAnalysisResult = JSON.parse(responseText);
-//       return analysis;
-//     } catch (error) {
-//       console.error('❌ Claude API Error:', error);
-//       if (error instanceof Error) {
-//         console.error('Error message:', error.message);
-//         console.error('Error stack:', error.stack);
-//       }
-//       throw new Error('Failed to analyze resume with AI');
-//     }
-//   }
-// }
-
-
-import { genAI, MODEL_NAME } from '../config/gemini';
-
-interface ResumeAnalysisResult {
-  overallScore: number;
-  strengths: string[];
-  improvements: string[];
-  atsOptimization: string[];
-  tailoredAdvice: string;
-}
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export class GeminiService {
-  async analyzeResume(resumeText: string, targetRole?: string): Promise<ResumeAnalysisResult> {
-    const prompt = `You are an expert technical recruiter and career coach. Analyze this resume ${targetRole ? `for a ${targetRole} role` : ''}.
+  private genAI: GoogleGenerativeAI;
 
-RESUME:
+  constructor() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      console.error('❌ GEMINI_API_KEY is not set in environment variables!');
+      throw new Error('GEMINI_API_KEY is required');
+    }
+    
+    console.log('✅ Gemini API Key loaded');
+    
+    this.genAI = new GoogleGenerativeAI(apiKey);
+  }
+
+  // Resume Analysis
+  async analyzeResume(resumeText: string, targetRole?: string): Promise<any> {
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const prompt = `Analyze this resume${targetRole ? ` for a ${targetRole} position` : ''}.
+
+Resume:
 ${resumeText}
 
-Provide a structured analysis in JSON format with:
-1. overallScore (0-100): How strong is this resume?
-2. strengths (array): Top 3-5 strong points
-3. improvements (array): Top 3-5 areas to improve
-4. atsOptimization (array): 3-5 specific ATS (Applicant Tracking System) tips
-5. tailoredAdvice (string): 2-3 paragraph personalized career advice
+Provide analysis in JSON format:
+{
+  "overallScore": <number 0-100>,
+  "strengths": ["strength 1", "strength 2", "strength 3"],
+  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
+  "atsOptimization": ["tip 1", "tip 2", "tip 3"],
+  "tailoredAdvice": "detailed paragraph of personalized career advice"
+}
 
-IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or extra text. Just the raw JSON object.`;
+Be specific and actionable. No additional text, just the JSON.`;
 
     try {
-      console.log('🤖 Calling Gemini API...');
-      
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-      
+      console.log('🤖 Calling Gemini API for resume analysis...');
       const result = await model.generateContent(prompt);
       const response = result.response;
       const text = response.text();
 
-      console.log('✅ Gemini API Response received');
-      console.log('📝 Raw Response:', text.substring(0, 200) + '...');
+      const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const analysis = JSON.parse(cleanedText);
 
-      // Clean up the response (remove markdown code blocks if present)
-      let cleanedText = text.trim();
-      if (cleanedText.startsWith('```json')) {
-        cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      } else if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/```\n?/g, '');
-      }
-
-      // Parse the JSON response
-      const analysis: ResumeAnalysisResult = JSON.parse(cleanedText);
-      
       console.log('✅ Successfully parsed analysis');
       return analysis;
     } catch (error) {
-      console.error('❌ Gemini API Error:', error);
-      if (error instanceof Error) {
-        console.error('Error message:', error.message);
-      }
-      throw new Error('Failed to analyze resume with AI');
+      console.error('❌ Gemini API error:', error);
+      throw new Error('Failed to analyze resume');
     }
   }
-  async generateInterviewQuestions(role: string, difficulty: string) {
-    const prompt = `Generate 5 technical interview questions for a ${difficulty} ${role} position.
 
-Return a JSON array of questions with this structure:
+  // Interview Question Generation
+  async generateInterviewQuestions(role: string, difficulty: string): Promise<any[]> {
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const prompt = `Generate 5 interview questions for a ${role} position at ${difficulty} level.
+
+Return the response as a JSON array with this exact structure:
 [
   {
     "question": "the interview question",
-    "difficulty": "${difficulty}",
-    "category": "category name (e.g., JavaScript, React, System Design, etc.)"
+    "category": "category name (e.g., Technical, Behavioral, System Design)"
   }
 ]
 
-Make questions realistic, role-specific, and appropriate for the ${difficulty} level.
-Return ONLY valid JSON, no markdown formatting.`;
+Make the questions realistic and relevant to the role. No additional text, just the JSON array.`;
 
     try {
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+      console.log('🤖 Calling Gemini API for interview questions...');
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const response = result.response;
+      const text = response.text();
 
+      console.log('📄 Raw response:', text.substring(0, 200));
+
+      // Clean the response
       let cleanedText = text.trim();
-      if (cleanedText.startsWith('```json')) {
-        cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      } else if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/```\n?/g, '');
-      }
+      cleanedText = cleanedText.replace(/```json\s*/g, '');
+      cleanedText = cleanedText.replace(/```\s*/g, '');
+      cleanedText = cleanedText.trim();
 
       const questions = JSON.parse(cleanedText);
+
+      if (!Array.isArray(questions)) {
+        throw new Error('Response is not an array');
+      }
+
+      console.log('✅ Successfully parsed questions:', questions.length);
       return questions;
     } catch (error) {
-      console.error('❌ Generate questions error:', error);
+      console.error('❌ Gemini API error:', error);
       throw new Error('Failed to generate interview questions');
     }
   }
 
-  async evaluateInterviewAnswer(question: string, answer: string, role?: string) {
-    const prompt = `Evaluate this interview answer ${role ? `for a ${role} position` : ''}.
+  // Interview Answer Evaluation
+  async evaluateInterviewAnswer(
+    question: string,
+    answer: string,
+    role: string
+  ): Promise<any> {
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-QUESTION: ${question}
+    const prompt = `You are an expert technical interviewer evaluating a candidate's answer for a ${role} position.
 
-CANDIDATE'S ANSWER: ${answer}
+Question: ${question}
 
-Provide evaluation in JSON format:
+Candidate's Answer: ${answer}
+
+Evaluate this answer and provide feedback in JSON format:
 {
-  "score": (0-100),
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
-  "suggestion": "A model answer or key points they should have mentioned (2-3 sentences)"
+  "score": <number 0-100>,
+  "strengths": ["strength 1", "strength 2"],
+  "improvements": ["improvement 1", "improvement 2"],
+  "feedback": "detailed paragraph of feedback"
 }
 
-Be constructive and specific. Return ONLY valid JSON, no markdown formatting.`;
+Be constructive and specific. No additional text, just the JSON.`;
 
     try {
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+      console.log('🤖 Calling Gemini API for answer evaluation...');
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const response = result.response;
+      const text = response.text();
 
-      let cleanedText = text.trim();
-      if (cleanedText.startsWith('```json')) {
-        cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      } else if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/```\n?/g, '');
-      }
+      const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const evaluation = JSON.parse(cleanedText);
 
-      const feedback = JSON.parse(cleanedText);
-      return feedback;
+      console.log('✅ Successfully parsed evaluation, score:', evaluation.score);
+      return evaluation;
     } catch (error) {
-      console.error('❌ Evaluate answer error:', error);
+      console.error('❌ Gemini API error:', error);
       throw new Error('Failed to evaluate answer');
     }
   }
-  async analyzeJobMatch(resumeText: string, jobDescription: string) {
-    const prompt = `Analyze how well this resume matches the job description.
 
-RESUME:
+  // Job Matching Analysis
+  async analyzeJobMatch(resumeText: string, jobDescription: string): Promise<any> {
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const prompt = `Compare this resume with the job description and provide a match analysis.
+
+Resume:
 ${resumeText}
 
-JOB DESCRIPTION:
+Job Description:
 ${jobDescription}
 
-Provide a detailed match analysis in JSON format:
+Provide analysis in JSON format:
 {
-  "matchPercentage": (0-100),
-  "matchedSkills": ["skill1", "skill2", ...],
-  "missingSkills": ["skill1", "skill2", ...],
-  "matchedExperience": ["experience1", "experience2", ...],
-  "missingExperience": ["experience1", "experience2", ...],
-  "recommendations": ["recommendation1", "recommendation2", ...],
-  "overallAssessment": "2-3 paragraph detailed assessment"
+  "matchPercentage": <number 0-100>,
+  "matchedSkills": ["skill 1", "skill 2", "skill 3"],
+  "missingSkills": ["skill 1", "skill 2"],
+  "matchedExperience": ["experience 1", "experience 2"],
+  "missingExperience": ["experience 1", "experience 2"],
+  "recommendations": ["recommendation 1", "recommendation 2", "recommendation 3"],
+  "overallAssessment": "detailed paragraph explaining the match and what to improve"
 }
 
-Be thorough and specific. Return ONLY valid JSON, no markdown formatting.`;
+Be specific and actionable. No additional text, just the JSON.`;
 
     try {
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+      console.log('🤖 Calling Gemini API for job match analysis...');
       const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      const response = result.response;
+      const text = response.text();
 
-      let cleanedText = text.trim();
-      if (cleanedText.startsWith('```json')) {
-        cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      } else if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/```\n?/g, '');
-      }
-
+      const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       const matchResult = JSON.parse(cleanedText);
+
+      console.log('✅ Successfully parsed job match, score:', matchResult.matchPercentage);
       return matchResult;
     } catch (error) {
-      console.error('❌ Job match error:', error);
+      console.error('❌ Gemini API error:', error);
       throw new Error('Failed to analyze job match');
     }
   }
 }
-

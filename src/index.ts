@@ -10,6 +10,7 @@ import jobRoutes from './routes/job.routes';
 import authRoutes from './routes/auth.routes';
 import uploadRoutes from './routes/upload.routes';
 import { generalLimiter } from './middlewares/rateLimiter';
+import dashboardRoutes from './routes/dashboard.routes';
 
 
 dotenv.config();
@@ -55,6 +56,7 @@ app.use('/api/interview', interviewRoutes);
 app.use('/api/job', jobRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes); 
+app.use('/api/dashboard', dashboardRoutes);
 
 
 
